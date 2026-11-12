@@ -230,39 +230,12 @@ public class ProfessorResponsavelService {
             String lessonsLearned) {
 
         Offer offer = getOffer(offerId);
-
-        if (offer.getStatus() != OfferStatus.EM_ANDAMENTO) {
-            throw new IllegalArgumentException(
-                    "A oferta não está em andamento.");
-        }
-
-        if (offer.getResponsibleProfessor() == null
-                || !offer.getResponsibleProfessor().getId().equals(professor.getId())) {
-            throw new IllegalArgumentException(
-                    "Você não é o responsável por esta oferta.");
-        }
+        validateOfferCanBeClosed(offer, professor);
 
         List<OfferStudent> students = offerStudentRepository.findByOffer(offer);
+        validateStudentsCanBeClosed(students);
 
-        if (students.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "A oferta precisa ter pelo menos um aluno.");
-        }
-
-        boolean allFinished = students.stream()
-                .allMatch(s -> s.getStatus() == StudentOfferStatus.CONCLUIDO_RESPONSAVEL);
-
-        if (!allFinished) {
-            throw new IllegalArgumentException(
-                    "Todos os alunos devem estar concluídos antes do encerramento.");
-        }
-
-        offer.setLessonsLearned(lessonsLearned);
-        offer.setStatus(OfferStatus.AGUARDANDO_ENCERRAMENTO_SECRETARIO);
-        offer.setClosureRequestedAt(LocalDateTime.now());
-        offer.setClosureRequestedBy(professor);
-
-        offerRepository.save(offer);
+        requestOfferClosure(offer, professor, lessonsLearned);
     }
 
     @Transactional(readOnly = true)
@@ -331,6 +304,46 @@ public class ProfessorResponsavelService {
         }
 
         return offer;
+    }
+
+    private void validateOfferCanBeClosed(Offer offer, User professor) {
+        if (offer.getStatus() != OfferStatus.EM_ANDAMENTO) {
+            throw new IllegalArgumentException(
+                    "A oferta não está em andamento.");
+        }
+
+        if (offer.getResponsibleProfessor() == null
+                || !offer.getResponsibleProfessor().getId().equals(professor.getId())) {
+            throw new IllegalArgumentException(
+                    "Você não é o responsável por esta oferta.");
+        }
+    }
+
+    private void validateStudentsCanBeClosed(List<OfferStudent> students) {
+        if (students.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "A oferta precisa ter pelo menos um aluno.");
+        }
+
+        boolean allFinished = students.stream()
+                .allMatch(s -> s.getStatus() == StudentOfferStatus.CONCLUIDO_RESPONSAVEL);
+
+        if (!allFinished) {
+            throw new IllegalArgumentException(
+                    "Todos os alunos devem estar concluídos antes do encerramento.");
+        }
+    }
+
+    private void requestOfferClosure(
+            Offer offer,
+            User professor,
+            String lessonsLearned) {
+        offer.setLessonsLearned(lessonsLearned);
+        offer.setStatus(OfferStatus.AGUARDANDO_ENCERRAMENTO_SECRETARIO);
+        offer.setClosureRequestedAt(LocalDateTime.now());
+        offer.setClosureRequestedBy(professor);
+
+        offerRepository.save(offer);
     }
 
     private boolean canRequestClosure(List<OfferStudent> students) {
