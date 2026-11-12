@@ -17,8 +17,7 @@ public class OfferService {
 
     public OfferService(
             OfferRepository offerRepository,
-            OfferStudentRepository offerStudentRepository
-    ) {
+            OfferStudentRepository offerStudentRepository) {
         this.offerRepository = offerRepository;
         this.offerStudentRepository = offerStudentRepository;
     }
@@ -42,7 +41,6 @@ public class OfferService {
                 offer.getStartDate(),
                 offer.getEndDate(),
                 professor,
-                offerStudentRepository.countByOffer(offer)
-        );
+                offerStudentRepository.countByOffer(offer));
     }
 }

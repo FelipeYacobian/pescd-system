@@ -42,8 +42,7 @@ public class ProfessorResponsavelService {
             DocumentationRepository documentationRepository,
             StatusChangeLogRepository statusChangeLogRepository,
             OfferRepository offerRepository,
-            OfferApiMapper offerApiMapper
-    ) {
+            OfferApiMapper offerApiMapper) {
         this.offerStudentRepository = offerStudentRepository;
         this.workPlanRepository = workPlanRepository;
         this.reportRepository = reportRepository;
@@ -60,8 +59,7 @@ public class ProfessorResponsavelService {
     @Transactional(readOnly = true)
     public List<ResponsavelDashboardDTO> getDashboard(User professor) {
 
-        List<OfferStudent> allEnrollments =
-                offerStudentRepository.findByOffer_ResponsibleProfessor(professor);
+        List<OfferStudent> allEnrollments = offerStudentRepository.findByOffer_ResponsibleProfessor(professor);
 
         Map<Offer, List<OfferStudent>> byOffer = allEnrollments.stream()
                 .collect(Collectors.groupingBy(OfferStudent::getOffer));
@@ -70,8 +68,7 @@ public class ProfessorResponsavelService {
                 .map(e -> new ResponsavelDashboardDTO(e.getKey(), e.getValue()))
                 .sorted(Comparator.comparing(
                         dto -> dto.getOffer().getSemester(),
-                        Comparator.reverseOrder()
-                ))
+                        Comparator.reverseOrder()))
                 .collect(Collectors.toList());
     }
 
@@ -92,8 +89,7 @@ public class ProfessorResponsavelService {
     public List<OfferStudentSummaryResponse> searchStudentsByNameForApi(
             Long offerId,
             User professor,
-            String name
-    ) {
+            String name) {
         Offer offer = getOfferForResponsible(offerId, professor);
         String normalizedName = name == null ? "" : name.trim().toLowerCase();
 
@@ -164,7 +160,7 @@ public class ProfessorResponsavelService {
         if (os.getStatus() != StudentOfferStatus.RELATORIO_APROVADO_SUPERVISOR) {
             throw new IllegalArgumentException(
                     "Ação indisponível: o status atual é \""
-                    + os.getStatus().getDisplayName() + "\".");
+                            + os.getStatus().getDisplayName() + "\".");
         }
 
         Report report = getReport(os);
@@ -183,8 +179,7 @@ public class ProfessorResponsavelService {
             Long offerId,
             Long studentId,
             User professor,
-            ConcludeReportFormDTO form
-    ) {
+            ConcludeReportFormDTO form) {
         concludeReport(offerId, studentId, professor, form);
         return offerApiMapper.toOfferStudentSummary(getEnrollmentForResponsavel(offerId, studentId, professor));
     }
@@ -209,8 +204,7 @@ public class ProfessorResponsavelService {
     public Offer getOffer(Long offerId) {
 
         return offerRepository.findById(offerId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException("Oferta não encontrada."));
+                .orElseThrow(() -> new IllegalArgumentException("Oferta não encontrada."));
     }
 
     @Transactional(readOnly = true)
@@ -224,8 +218,7 @@ public class ProfessorResponsavelService {
     public OfferSummaryResponse closeOfferForApi(
             Long offerId,
             User professor,
-            String lessonsLearned
-    ) {
+            String lessonsLearned) {
         closeOffer(offerId, professor, lessonsLearned);
         return offerApiMapper.toOfferSummary(getOfferForResponsible(offerId, professor));
     }
@@ -234,28 +227,34 @@ public class ProfessorResponsavelService {
     public void closeOffer(
             Long offerId,
             User professor,
-            String lessonsLearned
-    ) {
+            String lessonsLearned) {
 
         Offer offer = getOffer(offerId);
 
-        if (!offer.getResponsibleProfessor().getId().equals(professor.getId())) {
+        if (offer.getStatus() != OfferStatus.EM_ANDAMENTO) {
             throw new IllegalArgumentException(
-                    "Você não é o responsável por esta oferta."
-            );
+                    "A oferta não está em andamento.");
         }
 
-        List<OfferStudent> students =
-                offerStudentRepository.findByOffer(offer);
+        if (offer.getResponsibleProfessor() == null
+                || !offer.getResponsibleProfessor().getId().equals(professor.getId())) {
+            throw new IllegalArgumentException(
+                    "Você não é o responsável por esta oferta.");
+        }
+
+        List<OfferStudent> students = offerStudentRepository.findByOffer(offer);
+
+        if (students.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "A oferta precisa ter pelo menos um aluno.");
+        }
 
         boolean allFinished = students.stream()
-                .allMatch(s ->
-                        s.getStatus() == StudentOfferStatus.CONCLUIDO_RESPONSAVEL);
+                .allMatch(s -> s.getStatus() == StudentOfferStatus.CONCLUIDO_RESPONSAVEL);
 
         if (!allFinished) {
             throw new IllegalArgumentException(
-                    "Todos os alunos devem estar concluídos antes do encerramento."
-            );
+                    "Todos os alunos devem estar concluídos antes do encerramento.");
         }
 
         offer.setLessonsLearned(lessonsLearned);
@@ -265,7 +264,6 @@ public class ProfessorResponsavelService {
 
         offerRepository.save(offer);
     }
-
 
     @Transactional(readOnly = true)
     public List<OfferStudent> getOfferStudents(Long offerId) {
@@ -277,14 +275,14 @@ public class ProfessorResponsavelService {
 
     @Transactional
     public void analyzeDocumentation(Long offerId, Long studentId, User professor,
-                                     AnalyzeDocumentationFormDTO form) {
+            AnalyzeDocumentationFormDTO form) {
 
         OfferStudent os = getEnrollmentForResponsavel(offerId, studentId, professor);
 
         if (os.getStatus() != StudentOfferStatus.DOCUMENTACAO_ENVIADA) {
             throw new IllegalArgumentException(
                     "Ação indisponível: o status atual é \""
-                    + os.getStatus().getDisplayName() + "\".");
+                            + os.getStatus().getDisplayName() + "\".");
         }
 
         Documentation doc = getDocumentation(os);
@@ -303,8 +301,7 @@ public class ProfessorResponsavelService {
             Long offerId,
             Long studentId,
             User professor,
-            AnalyzeDocumentationFormDTO form
-    ) {
+            AnalyzeDocumentationFormDTO form) {
         analyzeDocumentation(offerId, studentId, professor, form);
         return offerApiMapper.toOfferStudentSummary(getEnrollmentForResponsavel(offerId, studentId, professor));
     }
@@ -337,7 +334,8 @@ public class ProfessorResponsavelService {
     }
 
     private boolean canRequestClosure(List<OfferStudent> students) {
-        return students.stream()
-                .allMatch(s -> s.getStatus() == StudentOfferStatus.CONCLUIDO_RESPONSAVEL);
+        return !students.isEmpty()
+                && students.stream()
+                        .allMatch(s -> s.getStatus() == StudentOfferStatus.CONCLUIDO_RESPONSAVEL);
     }
 }
